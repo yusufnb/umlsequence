@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+	<meta charset='utf-8'>
+	<meta http-equiv="X-UA-Compatible" content="chrome=1">
+	<meta name="viewport" content="width=device-width, initial-scale=1,	maximum-scale=1">
+
+	<!--[if	lt IE 9]>
+	<script	src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+
+	<link rel="stylesheet" type="text/css" href="css/style.css"	media="screen" />
+
+	<title>Sequence	Diagrams</title>
+  </head>
+
+<body>
+
+	<div id="main">
+
+		<section id="demo">
+			<div class="code">
+				<h3>Sequence Diagram Code Below</h3>
+				<textarea	class="editor">Title: Syntax
+A -> B:	Los	Angeles
+B --> B: Orange
+B -> C:	San	Jose
+C --> A: San Diego
+Note left of A:	California
+Note right of C: New Line\nYork
+Note over B: Texas
+				</textarea>
+				<br>
+				<a href="#"	class="download	button">Download as	SVG</a>&nbsp;&nbsp;&nbsp;<a	class="button render">Render</a>&nbsp;&nbsp;&nbsp;<a	class="button save">Save to Server</a>
+				<br><br>
+				<div id="error"></div>
+				<br><br>
+				Forked from	<a href="https://github.com/bramp/js-sequence-diagrams">bramp</a> by <a	href="https://github.com/yusufnb/js-sequence-diagrams">yusufnb</a>
+			</div>
+			<div class="diagram">This should be	a diagram! If you don't	see	it you need	Javascript enabled</div>
+		</section>
+
+		<div class="inner">
+		</div>
+	</div>
+	<script	src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+	<script	src="underscore-min.js"></script>
+	<script	src="raphael-min.js"></script>
+	<script	src="sequence-diagram-min.js"></script>
+	<script	src="svginnerhtml.min.js"></script>
+ 
+	<script	type="text/javascript">
+		var id;
+		var email=false;
+		function redraw() {
+			try {
+				var	pos	= $(document).scrollTop();
+				var	diagram	= Diagram.parse($('.editor').val());
+				var	title =	(diagram) ?	diagram.title :	'Sequence Diagram';
+				$('.diagram').html('');
+
+				// Draw
+				diagram.drawSVG($('.diagram').get(0), {theme: "simple",	scale: 1});
+				$('#error').html('');
+				document.title = title;		
+				localStorage.setItem('file', $('textarea.editor').val());
+				$(document).scrollTop(pos);
+
+			} catch(err) {
+				$('#error').html(err.message);
+				throw err;
+			}
+		};		  
+
+
+		$(document).ready(function() {
+			
+			$.get('/api/users/me', function(obj){
+				email = obj.email;
+			});
+
+			init();
+
+			$('.editor').change(redraw);
+
+			redraw();
+			$('.render').click(redraw);
+			$('.save').click(save_sequence);
+
+			$('.download').click(function(ev) {
+				var svg =	$('.diagram').find('svg')[0];
+				var width	= parseInt(svg.width.baseVal.value);
+				var height = parseInt(svg.height.baseVal.value);
+				var data = $('.editor').val();
+				var xml =	'<?xml version="1.0" encoding="utf-8" standalone="no"?><!DOCTYPE svg PUBLIC	"-//W3C//DTD SVG 20010904//EN" "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd"><svg xmlns="http://www.w3.org/2000/svg" width="' + width + '"	height="' +	height + '"	xmlns:xlink="http://www.w3.org/1999/xlink"><source><![CDATA[' +	data + ']]></source>' +	svg.innerHTML +	'</svg>';
+
+				var a	= $(this);
+				a.attr("download", "diagram.svg"); //	TODO I could put title here
+				a.attr("href", "data:image/svg+xml," + encodeURIComponent(xml));
+			});
+		});
+
+		function get_id () {
+			return parseInt(Math.floor(new Date().getTime() / 1000) + '', 10 | 0).toString(36 | 0);
+		}
+		
+		function init() {
+			if (location.hash.length < 3) {
+				id = get_id();
+			} else {
+				load_sequence();
+			}
+
+			window.onhashchange = load_sequence;
+			
+		}
+
+		function load_sequence() {
+			id = location.hash.substring(1);
+			$.get('/api/sequence/' + id, function(obj){
+				$('.editor').val(obj.data);
+				redraw();
+			});
+		}
+		function save_sequence() {
+			$.post('/api/sequence/' + id,{data: $('.editor').val(), Timestamps: new Date(), email: email});
+			location.hash = '#' + id;
+		}
+	</script>
+
+  </body>
+</html>
